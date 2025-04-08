@@ -163,21 +163,57 @@ def reserve_for_two_members(driver, wait):
                     apply_link.click()
                     print("신청하기 버튼 클릭 완료, 팝업 대기 중...")
                     
-                    # 팝업(Alert) 뜨면 메시지 확인 후 처리
+                    # 첫 번째 팝업(조인 예약 확인) 처리
                     alert = wait.until(EC.alert_is_present())
                     alert_text = alert.text
-                    print(f"팝업 메시지: {alert_text}")
+                    print(f"첫 번째 팝업 메시지: {alert_text}")
                     
                     # 팝업 메시지 분석
                     if "조인 가능한 타임이 아닙니다" in alert_text:
                         print("이미 예약된 시간대입니다. 다음 시간대로 넘어갑니다.")
                         alert.accept()
                         continue  # 다음 시간대로 넘어감
-                    else:
-                        # 일반적인 예약 확인 팝업 처리
+                    elif "예약" in alert_text or "조인" in alert_text:
+                        # 예약 확인 팝업 - '확인' 클릭
+                        print(f"예약 확인 팝업 발견: {alert_text}")
                         alert.accept()
-                        print(f"팝업 확인: {time_text}에 예약 신청 완료!")
-                        return True, time_text
+                        print("예약 확인 팝업 '확인' 버튼 클릭")
+                        
+                        # 두 번째 팝업(예약 성공) 처리 시도
+                        try:
+                            # 예약 성공 알림 팝업 대기 (최대 10초)
+                            success_alert = wait.until(EC.alert_is_present())
+                            success_text = success_alert.text
+                            print(f"두 번째 팝업 메시지: {success_text}")
+                            
+                            # 예약 성공 메시지 확인
+                            if "예약" in success_text and ("완료" in success_text or "성공" in success_text):
+                                success_alert.accept()
+                                print(f"예약 성공 확인! {time_text}에 예약이 완료되었습니다.")
+                                return True, time_text
+                            else:
+                                # 예약 실패 메시지인 경우
+                                success_alert.accept()
+                                print(f"예약 실패 메시지: {success_text}")
+                                continue  # 다음 시간대로 넘어감
+                        except Exception as popup_e:
+                            print(f"두 번째 팝업 대기 중 오류: {popup_e}")
+                            # 팝업이 나타나지 않은 경우, 페이지 확인
+                            try:
+                                # 예약 성공 확인을 위한 페이지 체크
+                                # 성공 페이지에 나타나는 요소 확인 (예: 예약 완료 메시지)
+                                success_elem = driver.find_element(By.XPATH, "//div[contains(text(), '예약') and contains(text(), '완료')]")
+                                if success_elem:
+                                    print(f"페이지에서 예약 성공 확인! {time_text}에 예약이 완료되었습니다.")
+                                    return True, time_text
+                            except:
+                                print("예약 성공 여부를 확인할 수 없습니다. 다음 시간대로 넘어갑니다.")
+                                continue
+                    else:
+                        # 기타 예상치 못한 팝업 - 수락 후 다음 시간대로
+                        alert.accept()
+                        print(f"예상치 못한 팝업: {alert_text}. 다음 시간대로 넘어갑니다.")
+                        continue
                     
             except Exception as row_e:
                 print(f"행 처리 중 오류 발생: {row_e}")

@@ -33,7 +33,7 @@ def perform_login(driver, wait, username, password):
         # 로그인 정보 확인
         print(f"로그인 시도: 사용자명={username}")
         
-        # 로그인 페이지 로딩 대기
+        # 로그인 페이지 로딩 대기 
         print("로그인 페이지 로딩 대기 중...")
         time.sleep(3)
         
@@ -246,6 +246,9 @@ def main(headless=True):
     monitoring = True  # 지속적인 모니터링 활성화
     monitor_interval = 10  # 모니터링 주기 (10초)
     
+    # 시작 시간 기록 (터미널 클리어 후 요약 정보용)
+    start_time = datetime.now()
+    
     # 카카오톡 토큰 사전 확인 (선택적)
     try:
         token = get_access_token()
@@ -309,6 +312,28 @@ def main(headless=True):
         attempt_count = 0
         while monitoring:
             attempt_count += 1
+            
+            # 1,000회 시도마다 터미널 로그 클리어
+            if attempt_count % 1000 == 0:
+                # 터미널 클리어 명령 (Windows: cls, 그 외: clear)
+                os.system('cls' if os.name=='nt' else 'clear')
+                
+                # 클리어 후 요약 정보 출력
+                current_time = datetime.now()
+                elapsed_time = current_time - start_time
+                hours, remainder = divmod(elapsed_time.seconds, 3600)
+                minutes, seconds = divmod(remainder, 60)
+                
+                print(f"==================================================")
+                print(f"프로그램 실행 중 - 터미널 로그 클리어됨")
+                print(f"시작 시간: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+                print(f"현재 시간: {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
+                print(f"경과 시간: {hours}시간 {minutes}분 {seconds}초")
+                print(f"시도 횟수: {attempt_count}회")
+                print(f"예약 시도 날짜: {user_dates}")
+                print(f"모니터링 간격: {monitor_interval}초")
+                print(f"==================================================")
+            
             print(f"====== 모니터링 시도 {attempt_count}번째 ======")
             
             try:

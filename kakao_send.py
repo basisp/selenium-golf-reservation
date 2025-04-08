@@ -3,7 +3,6 @@ import requests
 import json
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
-import time
 
 # .env 파일 로드
 load_dotenv()

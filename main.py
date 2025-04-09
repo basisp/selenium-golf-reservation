@@ -111,7 +111,7 @@ def reserve_for_two_members(driver, wait):
     """
     날짜 클릭 후 넘어온 페이지(예: reservation02_1.asp)의 테이블에서
     '2명'이 가능한 행을 찾아 '신청하기'까지 진행하고 팝업(Alert)을 '예'로 처리.
-    시간 범위는 8시부터 13시까지만 고려합니다.
+    시간 범위는 8시부터 13시까지만 고려하며, 9홀만 예약합니다.
     성공하면 (True, 시간) 튜플, 실패하면 (False, None)을 반환합니다.
     """
     try:
@@ -139,6 +139,18 @@ def reserve_for_two_members(driver, wait):
                     print(f"시간대 {time_text}는 원하는 범위(8시~13시) 내에 있습니다.")
                 else:
                     print(f"시간대 {time_text}는 원하는 범위(8시~13시)를 벗어납니다. 건너뜁니다.")
+                    continue
+                
+                # 9홀 여부 확인
+                try:
+                    course_elem = row.find_element(By.XPATH, "./td[@class='course']")
+                    course_text = course_elem.text.strip()
+                    if "9홀" not in course_text:
+                        print(f"시간대 {time_text}는 9홀이 아닙니다 ({course_text}). 건너뜁니다.")
+                        continue
+                    print(f"시간대 {time_text}는 9홀입니다. 조건에 맞습니다.")
+                except Exception as course_e:
+                    print(f"코스 정보를 찾을 수 없습니다: {course_e}. 다음 시간대로 넘어갑니다.")
                     continue
                 
                 # 예약 가능 인원 확인 (HTML 구조: td[3]/span)
@@ -220,7 +232,7 @@ def reserve_for_two_members(driver, wait):
                 continue
         
         if not found_slot:
-            print("8시부터 13시 사이에 2명 예약 가능한 슬롯을 찾지 못했습니다.")
+            print("8시부터 13시 사이에 9홀 2명 예약 가능한 슬롯을 찾지 못했습니다.")
             
     except Exception as e:
         print("2명 예약 진행 중 오류 발생:", e)
@@ -435,7 +447,7 @@ def main(headless=True):
                             wait.until(EC.presence_of_element_located((By.XPATH, "//table/tbody/tr[td[@class='gray']]")))
                             print("예약 가능 시간 페이지 로딩 완료")
                             
-                            # 해당 날짜에서 8시부터 13시까지 시간대 중 2명 예약 가능한 슬롯 찾기
+                            # 해당 날짜에서 8시부터 13시까지 시간대 중 9홀 2명 예약 가능한 슬롯 찾기
                             reserve_success, time_slot = reserve_for_two_members(driver, wait)
                             
                             # 예약 성공하면 모니터링 종료

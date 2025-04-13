@@ -12,7 +12,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import Keys
 from dotenv import load_dotenv, dotenv_values
-from kakao_send import send_kakao_message, get_access_token
 
 # .env 파일 로드
 load_dotenv()
@@ -135,7 +134,7 @@ def reserve_for_two_members(driver, wait):
                 hour = int(time_text.split(':')[0])
                 
                 # 8시부터 13시까지의 시간대만 고려 (8:00 ~ 13:59)
-                if 8 <= hour <= 13:
+                if 8 <= hour <= 12:
                     print(f"시간대 {time_text}는 원하는 범위(8시~13시) 내에 있습니다.")
                 else:
                     print(f"시간대 {time_text}는 원하는 범위(8시~13시)를 벗어납니다. 건너뜁니다.")
@@ -157,7 +156,7 @@ def reserve_for_two_members(driver, wait):
                 seat_count_elem = row.find_element(By.XPATH, "./td[3]/span")
                 seat_count_text = seat_count_elem.text.strip()
                 
-                if "2명" in seat_count_text:
+                if "2명" in seat_count_text or "3명" in seat_count_text:
                     found_slot = True
                     print(f"{idx+1}번째 슬롯({time_text})에서 '2명' 예약 가능 발견. 예약 진행 시도 중...")
                     
@@ -238,51 +237,10 @@ def reserve_for_two_members(driver, wait):
         print("2명 예약 진행 중 오류 발생:", e)
     return False, None
 
-def notify_reservation_success(date, time_slot):
-    """
-    예약 성공 시 카카오톡 메시지 전송 함수
-    성공 또는 실패 여부를 반환합니다.
-    """
-    # 토큰이 있는지 먼저 확인
-    token = get_access_token()
-    if not token:
-        print("카카오톡 토큰이 없습니다. 인증 과정을 진행하세요.")
-        # 인증 과정 유도
-        get_access_token()  # 인증 URL 표시 및 코드 입력 요청
-        # 다시 토큰 확인
-        token = get_access_token()
-        if not token:
-            print("카카오톡 인증에 실패했습니다. 예약은 성공했으나 알림 메시지는 전송되지 않았습니다.")
-            return False
-    
-    # 메시지 전송 시도
-    max_retries = 3
-    for attempt in range(1, max_retries + 1):
-        try:
-            print(f"카카오톡 메시지 전송 시도 중... ({attempt}/{max_retries})")
-            if send_kakao_message(date, time_slot, True):
-                print("카카오톡 메시지 전송 성공!")
-                return True
-            else:
-                print(f"카카오톡 메시지 전송 실패! 재시도 중...")
-                time.sleep(2)  # 잠시 대기 후 재시도
-        except Exception as e:
-            print(f"카카오톡 메시지 전송 중 오류 발생: {e}")
-            if attempt < max_retries:
-                print(f"2초 후 재시도합니다... ({attempt}/{max_retries})")
-                time.sleep(2)
-            else:
-                print("최대 시도 횟수를 초과했습니다. 메시지 전송에 실패했습니다.")
-                return False
-    
-    print("카카오톡 메시지 전송이 모든 시도에서 실패했습니다.")
-    return False
-
 def main(headless=True):
     # 사용자가 직접 지정한 예약 시도 날짜들 (형식: YYYYMMDD)
     # 여기에 원하는 날짜를 추가하거나 제거할 수 있습니다
     user_dates = [
-        "20250414",  # 2025년 4월 14일
         "20250416",  # 2025년 4월 16일
         "20250418",  # 2025년 4월 18일
         # 필요한 만큼 날짜 추가 가능
@@ -296,16 +254,6 @@ def main(headless=True):
     
     # 시작 시간 기록 (터미널 클리어 후 요약 정보용)
     start_time = datetime.now()
-    
-    # 카카오톡 토큰 사전 확인 (선택적)
-    try:
-        token = get_access_token()
-        if token:
-            print("카카오톡 토큰이 유효합니다. 예약 성공 시 카카오톡 메시지를 보낼 수 있습니다.")
-        else:
-            print("카카오톡 토큰이 없습니다. 예약 성공 시 알림을 받으려면 먼저 인증을 진행해주세요.")
-    except Exception as e:
-        print(f"카카오톡 토큰 확인 중 오류: {e}")
     
     # 로그인 정보 가져오기 (.env 파일에서 직접 가져온 값 사용)
     username = GOLF_USERNAME
@@ -453,15 +401,6 @@ def main(headless=True):
                             # 예약 성공하면 모니터링 종료
                             if reserve_success:
                                 print(f"{current_date} 날짜에 {time_slot} 시간에 예약 성공! 모니터링을 종료합니다.")
-                                
-                                # 카카오톡 메시지 전송 - 개선된 함수 사용
-                                print("예약 성공 알림을 카카오톡으로 전송합니다...")
-                                notify_result = notify_reservation_success(current_date, time_slot)
-                                if notify_result:
-                                    print("예약 성공 알림이 성공적으로 전송되었습니다.")
-                                else:
-                                    print("예약은 성공했으나, 카카오톡 알림 전송에 실패했습니다.")
-                                
                                 monitoring = False
                                 break
                             
@@ -498,7 +437,7 @@ def main(headless=True):
     
     finally:
         # 종료 전 잠시 대기
-        time.sleep(5)
+        time.sleep(3)
         driver.quit()
         
         if monitoring:

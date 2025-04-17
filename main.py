@@ -134,7 +134,7 @@ def reserve_for_two_members(driver, wait):
                 hour = int(time_text.split(':')[0])
                 
                 # 8시부터 13시까지의 시간대만 고려 (8:00 ~ 13:59)
-                if 8 <= hour <= 12:
+                if 9 <= hour <= 10:
                     print(f"시간대 {time_text}는 원하는 범위(8시~13시) 내에 있습니다.")
                 else:
                     print(f"시간대 {time_text}는 원하는 범위(8시~13시)를 벗어납니다. 건너뜁니다.")
@@ -158,7 +158,7 @@ def reserve_for_two_members(driver, wait):
                 
                 if "2명" in seat_count_text or "3명" in seat_count_text:
                     found_slot = True
-                    print(f"{idx+1}번째 슬롯({time_text})에서 '2명' 예약 가능 발견. 예약 진행 시도 중...")
+                    print(f"{idx+1}번째 슬롯({time_text})에서 '2명' or '3명' 예약 가능 발견. 예약 진행 시도 중...")
                     
                     # 해당 행의 인원 선택 드롭다운 가져오기 - j_person0, j_person1 등 ID 형식
                     select_elem = row.find_element(By.XPATH, ".//td[@class='price']/select")
@@ -241,8 +241,9 @@ def main(headless=True):
     # 사용자가 직접 지정한 예약 시도 날짜들 (형식: YYYYMMDD)
     # 여기에 원하는 날짜를 추가하거나 제거할 수 있습니다
     user_dates = [
-        "20250416",  # 2025년 4월 16일
-        "20250418",  # 2025년 4월 18일
+        "20250421",  # 2025년 4월 16일
+        "20250423",
+        "20250425",  # 2025년 4월 18일
         # 필요한 만큼 날짜 추가 가능
     ]
     

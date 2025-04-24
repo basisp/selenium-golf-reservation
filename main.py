@@ -134,7 +134,7 @@ def reserve_for_two_members(driver, wait):
                 hour = int(time_text.split(':')[0])
                 
                 # 8시부터 13시까지의 시간대만 고려 (8:00 ~ 13:59)
-                if 9 <= hour <= 10:
+                if 8 <= hour <= 10:
                     print(f"시간대 {time_text}는 원하는 범위(8시~13시) 내에 있습니다.")
                 else:
                     print(f"시간대 {time_text}는 원하는 범위(8시~13시)를 벗어납니다. 건너뜁니다.")
@@ -241,9 +241,9 @@ def main(headless=True):
     # 사용자가 직접 지정한 예약 시도 날짜들 (형식: YYYYMMDD)
     # 여기에 원하는 날짜를 추가하거나 제거할 수 있습니다
     user_dates = [
-        "20250421",  # 2025년 4월 16일
-        "20250423",
-        "20250425",  # 2025년 4월 18일
+        "20250428",  # 2025년 4월 16일
+        "20250430",
+        "20250502",  # 2025년 4월 18일
         # 필요한 만큼 날짜 추가 가능
     ]
     
@@ -305,10 +305,25 @@ def main(headless=True):
         except Exception:
             print("이미 로그인 상태이거나 로그인 요소를 찾을 수 없습니다.")
         
+        # 마지막 로그인 상태 확인 시각 초기화
+        last_login_check = datetime.now()
+        
         # 예약 성공할 때까지 계속 모니터링 및 시도
         attempt_count = 0
         while monitoring:
             attempt_count += 1
+            
+            # 1시간마다 로그인 상태 확인
+            if (datetime.now() - last_login_check).total_seconds() >= 3600:
+                try:
+                    login_element = driver.find_element(By.XPATH, "//a[contains(@href, 'member01.asp') and contains(text(), '로그인')]" )
+                    print("로그인 세션 만료 감지, 재로그인 시도합니다.")
+                    login_element.click()
+                    perform_login(driver, wait, username=username, password=password)
+                    driver.get(reservation_url)
+                except Exception:
+                    print("1시간 체크: 여전히 로그인 상태입니다.")
+                last_login_check = datetime.now()
             
             # 1,000회 시도마다 터미널 로그 클리어
             if attempt_count % 1000 == 0:

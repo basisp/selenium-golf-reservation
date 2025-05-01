@@ -61,18 +61,6 @@ def perform_login(driver, wait, username, password):
             print("페이지 소스를 가져올 수 없습니다.")
 
 
-def click_sajade_course(driver, wait):
-    """
-    예약 페이지에서 '사자대' 링크를 찾아 클릭합니다.
-    """
-    try:
-        link = wait.until(EC.element_to_be_clickable((By.LINK_TEXT, "사자대")))
-        link.click()
-        print("사자대 코스 선택 완료")
-        time.sleep(2)
-    except Exception as e:
-        print(f"사자대 코스 선택 중 오류 발생: {e}")
-
 
 def select_date(driver, wait, target_date):
     """
@@ -450,10 +438,12 @@ def main():
         print("오류: 로그인 정보가 설정되지 않았습니다.")
         return
 
-    reservation_url = (
+    reservation_urls = [
         "https://www.armywelfaregolf.mil.kr/"
-        "reserve/reserveEmptyTee.do?entofcCd=12&golfCrsCd=1"
-    )
+        "reserve/reserveEmptyTee.do?entofcCd=12&golfCrsCd=1",  # 사자대
+        "https://www.armywelfaregolf.mil.kr/"
+        "reserve/reserveEmptyTee.do?entofcCd=11&golfCrsCd=1",  # 다른 코스
+    ]
     driver, wait = setup_driver()
 
     # 터미널 클리어 주기
@@ -467,24 +457,22 @@ def main():
             if attempt_count % clear_interval == 0:
                 os.system('cls' if os.name == 'nt' else 'clear')
 
-            navigate_to_reservation(driver, reservation_url)
-            ensure_logged_in(driver, wait, reservation_url, username, password)
+            for url in reservation_urls:
+                navigate_to_reservation(driver, url)
+                ensure_logged_in(driver, wait, url, username, password)
+                success, date_str, time_str, _ = reserve_in_range(
+                    driver, wait,
+                    "20250512", "20250516",
+                    "07:30", "11:00"
+                )
 
-            # 변경: 2025-05-12 ~ 2025-05-16, 시간 08:00에 시도
-            success, date_str, time_str, new_url = reserve_in_range(
-                driver, wait,
-                "20250512", "20250516",
-                "08:00", "08:00"
-            )
+                if success:
+                    print(f"[{attempt_count}] {date_str} {time_str} 슬롯 클릭 성공 → 팝업 처리")
+                    click_reserve_save_and_cancel(driver, wait)
+                    return  # 성공 시 루프 탈출
 
-            if success:
-                print(f"[{attempt_count}] {date_str} {time_str} 슬롯 클릭 성공 → 팝업 처리")
-                click_reserve_save_and_cancel(driver, wait)
-                print("예약 완료, 프로그램 종료")
-                break
-
-            print(f"[{attempt_count}] 예약 실패, 10초 후 재시도합니다...")
-            time.sleep(10)
+            print(f"[{attempt_count}] 모든 코스 검사 완료, 10초 대기 후 재시도")
+            time.sleep(5)
 
     finally:
         driver.quit()

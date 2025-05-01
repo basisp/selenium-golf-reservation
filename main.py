@@ -23,61 +23,32 @@ GOLF_PASSWORD = env_values.get("PASSWORD") or os.getenv("GOLF_PASSWORD")
 
 def perform_login(driver, wait, username, password):
     """
-    로그인 페이지에서 로그인 처리
-    사용자 아이디: name="UserID"
-    비밀번호: name="Password"
-    로그인 버튼: 이미지 src="/image/btn_login.jpg"
+    수정: login.html 구조에 맞춘 locator
     """
     try:
-        # 로그인 정보 확인
         print(f"로그인 시도: 사용자명={username}")
-        
-        # 로그인 페이지 로딩 대기 
-        print("로그인 페이지 로딩 대기 중...")
-        time.sleep(3)
-        
-        # 아이디 입력 (name="UserID")
-        id_input = driver.find_element(By.NAME, "UserID")
+        # 로그인 페이지 로딩 대기
+        wait.until(EC.presence_of_element_located((By.NAME, "mmbrId")))
+
+        # 1) 아이디 입력 (수정)
+        id_input = driver.find_element(By.NAME, "mmbrId")
         id_input.clear()
         id_input.send_keys(username)
         print("아이디 입력 완료")
-        
-        # 비밀번호 입력 (name="Password")
-        pw_input = driver.find_element(By.NAME, "Password")
+
+        # 2) 비밀번호 입력 (수정)
+        pw_input = driver.find_element(By.NAME, "pwd")
         pw_input.clear()
         pw_input.send_keys(password)
         print("비밀번호 입력 완료")
-        
-        # 로그인 버튼 클릭 (이미지 src="/image/btn_login.jpg")
-        # 이미지 버튼이므로 이미지를 감싸고 있는 a 태그나 이미지 직접 클릭 시도
-        try:
-            # 방법 1: 이미지를 직접 찾아 클릭
-            login_button = driver.find_element(By.XPATH, "//img[@src='/image/btn_login.jpg']")
-            login_button.click()
-            print("로그인 버튼 이미지 클릭")
-        except Exception as e:
-            print(f"이미지 직접 클릭 실패: {e}")
-            try:
-                # 방법 2: 이미지를 감싸는 a 태그 찾기
-                login_link = driver.find_element(By.XPATH, "//a[img[@src='/image/btn_login.jpg']]")
-                login_link.click()
-                print("로그인 이미지 감싸는 링크 클릭")
-            except Exception as e2:
-                print(f"링크 클릭 실패: {e2}")
-                try:
-                    # 방법 3: JavaScript로 이미지 클릭
-                    driver.execute_script("document.querySelector('img[src=\"/image/btn_login.jpg\"]').click();")
-                    print("JavaScript로 로그인 이미지 클릭")
-                except Exception as e3:
-                    print(f"JavaScript 클릭 실패: {e3}")
-                    # 방법 4: 비밀번호 필드에 Enter 키 입력 (onkeypress 이벤트 트리거)
-                    pw_input.send_keys(Keys.ENTER)
-                    print("Enter 키로 로그인 폼 제출")
-        
-        # 로그인 완료 후 로딩 대기
-        print("로그인 처리 중...")
+
+        # 3) 로그인 버튼 클릭 (수정)
+        login_button = driver.find_element(By.CSS_SELECTOR, "button.btn_blue_big")
+        login_button.click()
+        print("로그인 버튼 클릭")
+
+        # 로그인 처리 대기
         time.sleep(5)
-        
         print("로그인 완료!")
     except Exception as e:
         print(f"로그인 과정에서 오류 발생: {e}")
@@ -88,6 +59,20 @@ def perform_login(driver, wait, username, password):
             print(page_source[:1000])  # 처음 1000자만 출력
         except:
             print("페이지 소스를 가져올 수 없습니다.")
+
+
+def click_sajade_course(driver, wait):
+    """
+    예약 페이지에서 '사자대' 링크를 찾아 클릭합니다.
+    """
+    try:
+        link = wait.until(EC.element_to_be_clickable((By.LINK_TEXT, "사자대")))
+        link.click()
+        print("사자대 코스 선택 완료")
+        time.sleep(2)
+    except Exception as e:
+        print(f"사자대 코스 선택 중 오류 발생: {e}")
+
 
 def select_date(driver, wait, target_date):
     """
@@ -237,237 +222,272 @@ def reserve_for_two_members(driver, wait):
         print("2명 예약 진행 중 오류 발생:", e)
     return False, None
 
-def main(headless=True):
-    # 사용자가 직접 지정한 예약 시도 날짜들 (형식: YYYYMMDD)
-    # 여기에 원하는 날짜를 추가하거나 제거할 수 있습니다
-    user_dates = [
-        "20250428",  # 2025년 4월 16일
-        "20250430",
-        "20250502",  # 2025년 4월 18일
-        # 필요한 만큼 날짜 추가 가능
-    ]
-    
-    print(f"예약 시도할 날짜: {user_dates}")
-    
-    # 모니터링 설정
-    monitoring = True  # 지속적인 모니터링 활성화
-    monitor_interval = 10  # 모니터링 주기 (10초)
-    
-    # 시작 시간 기록 (터미널 클리어 후 요약 정보용)
-    start_time = datetime.now()
-    
-    # 로그인 정보 가져오기 (.env 파일에서 직접 가져온 값 사용)
-    username = GOLF_USERNAME
-    password = GOLF_PASSWORD
-    
-    # 로그인 정보 확인
-    if not username or not password:
-        print("오류: 로그인 정보가 없습니다. .env 파일을 확인하세요.")
-        print("현재 설정된 값: GOLF_USERNAME=", username)
-        return
-    
-    # Chrome 웹드라이버 옵션 설정
+def setup_driver():
     chrome_options = Options()
-    if headless:
-        print("헤드리스 모드로 실행합니다.")
-        chrome_options.add_argument("--headless=new")  # 새로운 헤드리스 모드 사용
-    
-    # 추가 옵션 설정
-    chrome_options.add_argument("--disable-gpu")  # GPU 가속 비활성화
-    chrome_options.add_argument("--no-sandbox")  # 샌드박스 모드 비활성화
-    chrome_options.add_argument("--disable-dev-shm-usage")  # /dev/shm 파티션 사용 비활성화
-    chrome_options.add_argument("--window-size=1920,1080")  # 창 크기 설정
-    chrome_options.add_argument("--log-level=3")  # 로그 레벨 최소화
-    
-    # 일반적인 브라우저처럼 보이게 사용자 에이전트 설정
-    chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-    
+    # GUI 모드로 실행
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument("--log-level=3")
+    chrome_options.add_argument(
+        "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    )
     driver = webdriver.Chrome(options=chrome_options)
     wait = WebDriverWait(driver, 10)
-    
-    try:
-        # 1. 예약 페이지로 이동
-        reservation_url = "http://www.ddgolf.co.kr/03reservation/reservation02.asp"
+    return driver, wait
+
+def navigate_to_reservation(driver, url):
+    """
+    예약 페이지로 이동 후 짧게 대기
+    """
+    driver.get(url)
+    time.sleep(2)
+
+def ensure_logged_in(driver, wait, reservation_url, username, password):
+    """
+    리디렉션된 로그인 페이지가 보이면 perform_login 후
+    다시 예약 페이지로 복귀
+    """
+    current_url = driver.current_url
+    if "login/loginForm.do" in current_url or "loginForm.do" in current_url:
+        print("로그인 페이지 감지 → 로그인 처리")
+        wait.until(EC.presence_of_element_located((By.NAME, "mmbrId")))
+        perform_login(driver, wait, username, password)
         driver.get(reservation_url)
-        
-        # 2. 로그인 여부 확인 (사이트 구조에 따라 예외 처리)
+    else:
+        print("로그인 불필요 (이미 로그인 상태)")
+
+def clear_terminal_if_needed(attempt_count, start_time, user_dates, monitor_interval):
+    """
+    1000회마다 터미널을 클리어하고 요약 정보 출력
+    """
+    if attempt_count % 1000 == 0:
+        os.system('cls' if os.name=='nt' else 'clear')
+        current_time = datetime.now()
+        elapsed = current_time - start_time
+        hours, rem = divmod(elapsed.seconds, 3600)
+        minutes, seconds = divmod(rem, 60)
+        print("==================================================")
+        print(f"시도 횟수: {attempt_count}회 | 경과 시간: {hours}h {minutes}m {seconds}s")
+        print(f"예약 날짜: {user_dates} | 모니터링 주기: {monitor_interval}s")
+        print("==================================================")
+
+def check_and_relogin(driver, wait, last_login_check, reservation_url, username, password):
+    """
+    한 시간마다 세션 만료 체크 후 재로그인
+    """
+    if (datetime.now() - last_login_check).total_seconds() >= 3600:
         try:
-            login_element = driver.find_element(By.XPATH, "//a[contains(@href, 'member01.asp') and contains(text(), '로그인')]")
-            print("미로그인 상태로 감지되어 로그인 페이지로 전환합니다.")
-            login_element.click()
-            
-            # 로그인 페이지에서 로그인 처리
-            # login_form을 기다리지 않고 직접 필드에 접근
-            perform_login(driver, wait, username=username, password=password)
-            
-            # 로그인 후 다시 예약 페이지로 이동
+            login_el = driver.find_element(By.XPATH, "//a[contains(text(),'로그인')]")
+            print("세션 만료 감지 → 재로그인 진행")
+            login_el.click()
+            perform_login(driver, wait, username, password)
             driver.get(reservation_url)
-        except Exception:
-            print("이미 로그인 상태이거나 로그인 요소를 찾을 수 없습니다.")
-        
-        # 마지막 로그인 상태 확인 시각 초기화
-        last_login_check = datetime.now()
-        
-        # 예약 성공할 때까지 계속 모니터링 및 시도
-        attempt_count = 0
-        while monitoring:
-            attempt_count += 1
-            
-            # 1시간마다 로그인 상태 확인
-            if (datetime.now() - last_login_check).total_seconds() >= 3600:
-                try:
-                    login_element = driver.find_element(By.XPATH, "//a[contains(@href, 'member01.asp') and contains(text(), '로그인')]" )
-                    print("로그인 세션 만료 감지, 재로그인 시도합니다.")
-                    login_element.click()
-                    perform_login(driver, wait, username=username, password=password)
-                    driver.get(reservation_url)
-                except Exception:
-                    print("1시간 체크: 여전히 로그인 상태입니다.")
-                last_login_check = datetime.now()
-            
-            # 1,000회 시도마다 터미널 로그 클리어
-            if attempt_count % 1000 == 0:
-                # 터미널 클리어 명령 (Windows: cls, 그 외: clear)
-                os.system('cls' if os.name=='nt' else 'clear')
-                
-                # 클리어 후 요약 정보 출력
-                current_time = datetime.now()
-                elapsed_time = current_time - start_time
-                hours, remainder = divmod(elapsed_time.seconds, 3600)
-                minutes, seconds = divmod(remainder, 60)
-                
-                print(f"==================================================")
-                print(f"프로그램 실행 중 - 터미널 로그 클리어됨")
-                print(f"시작 시간: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
-                print(f"현재 시간: {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
-                print(f"경과 시간: {hours}시간 {minutes}분 {seconds}초")
-                print(f"시도 횟수: {attempt_count}회")
-                print(f"예약 시도 날짜: {user_dates}")
-                print(f"모니터링 간격: {monitor_interval}초")
-                print(f"==================================================")
-            
-            print(f"====== 모니터링 시도 {attempt_count}번째 ======")
-            
-            try:
-                # 3. 사용 가능한 날짜 확인 (td class="on" 요소들)
-                available_dates = driver.find_elements(By.XPATH, "//td[@class='on' and contains(@onclick, 'transDate_join')]")
-                
-                if not available_dates:
-                    print(f"예약 가능한 날짜가 없습니다. {monitor_interval}초 후 페이지를 새로고침 후 재시도합니다.")
-                    time.sleep(monitor_interval)
-                    driver.refresh()
-                    time.sleep(3)  # 새로고침 후 잠시 대기
-                    continue
-                
-                print(f"총 {len(available_dates)}개의 예약 가능한 날짜를 찾았습니다.")
-                
-                # 날짜별로 예약 시도 (사용자 지정 날짜들만)
-                reserve_success = False
-                current_date = None
-                time_slot = None
-                
-                for date_elem in available_dates:
-                    try:
-                        # 날짜 요소에서 날짜 정보 추출 (onclick 속성에서 날짜 값 파싱)
-                        onclick_attr = date_elem.get_attribute("onclick")
-                        date_match = re.search(r"'(\d{8})'", onclick_attr)
-                        
-                        if date_match:
-                            current_date = date_match.group(1)
-                            
-                            # 사용자가 지정한 날짜 목록에 있는지 확인
-                            if current_date not in user_dates:
-                                print(f"날짜 {current_date}는 지정한 날짜 목록에 없어 건너뜁니다.")
-                                continue
-                            
-                            print(f"\n{current_date} 날짜에 대한 예약 시도 중...")
-                            
-                            # 날짜 클릭
-                            date_elem.click()
-                            
-                            # 날짜 클릭 후 로그인 팝업이 뜨는지 확인
-                            try:
-                                alert = wait.until(EC.alert_is_present())
-                                alert_text = alert.text
-                                print(f"팝업 발생: {alert_text}")
-                                
-                                # '로그인을 하셔야 예약가능합니다.' 팝업 처리
-                                if "로그인" in alert_text:
-                                    alert.accept()  # '예' 버튼 클릭
-                                    print("로그인 페이지로 이동합니다.")
-                                    
-                                    # 로그인 진행
-                                    perform_login(driver, wait, username=username, password=password)
-                                    
-                                    # 로그인 후 다시 예약 페이지로 이동
-                                    driver.get(reservation_url)
-                                    print("예약 페이지로 돌아왔습니다.")
-                                    break  # 다시 날짜 선택부터 시작
-                            except:
-                                # 팝업이 없으면 정상 진행
-                                pass
-                            
-                            # 페이지 로딩 대기
-                            wait.until(EC.presence_of_element_located((By.XPATH, "//table/tbody/tr[td[@class='gray']]")))
-                            print("예약 가능 시간 페이지 로딩 완료")
-                            
-                            # 해당 날짜에서 8시부터 13시까지 시간대 중 9홀 2명 예약 가능한 슬롯 찾기
-                            reserve_success, time_slot = reserve_for_two_members(driver, wait)
-                            
-                            # 예약 성공하면 모니터링 종료
-                            if reserve_success:
-                                print(f"{current_date} 날짜에 {time_slot} 시간에 예약 성공! 모니터링을 종료합니다.")
-                                monitoring = False
-                                break
-                            
-                            # 다시 예약 페이지로 돌아가기
-                            driver.get(reservation_url)
-                            
-                            # 페이지 로딩 대기
-                            wait.until(EC.presence_of_element_located((By.XPATH, "//td[@class='on']")))
-                        
-                    except Exception as e:
-                        print(f"날짜 예약 시도 중 오류 발생: {e}")
-                        # 오류 발생 시 다시 예약 페이지로 돌아가서 다음 날짜 시도
-                        driver.get(reservation_url)
-                        # 페이지 로딩 대기
-                        wait.until(EC.presence_of_element_located((By.XPATH, "//td[@class='on']")))
-                
-                # 모든 날짜를 시도했지만 예약 실패한 경우
-                if monitoring and not reserve_success:
-                    print(f"이번 시도에서 모든 날짜를 확인했지만 예약하지 못했습니다. {monitor_interval}초 후 다시 시도합니다.")
-                    time.sleep(monitor_interval)
-                    driver.get(reservation_url)  # 다시 예약 페이지로 이동
-            
-            except Exception as e:
-                print(f"모니터링 중 오류 발생: {e}")
-                print(f"{monitor_interval}초 후 다시 시도합니다.")
-                time.sleep(monitor_interval)
-                driver.get(reservation_url)  # 다시 예약 페이지로 이동
-        
-    except KeyboardInterrupt:
-        print("사용자에 의해 프로그램이 중단되었습니다.")
-    
+        except:
+            print("계속 로그인 상태 유지됨")
+        return datetime.now()
+    return last_login_check
+
+def find_available_dates(driver):
+    """
+    예약 가능한 날짜 요소 목록 반환
+    """
+    return driver.find_elements(
+        By.XPATH, "//td[@class='on' and contains(@onclick, 'transDate_join')]"
+    )
+
+def try_reserve_for_dates(driver, wait, available_dates, user_dates, reservation_url, username, password):
+    """
+    user_dates에 포함된 날짜만 순회하며 reserve_for_two_members 호출
+    """
+    for elem in available_dates:
+        onclick = elem.get_attribute("onclick")
+        date_match = re.search(r"'(\d{8})'", onclick)
+        if not date_match:
+            continue
+        date = date_match.group(1)
+        if date not in user_dates:
+            continue
+        print(f"{date} 예약 시도...")
+        elem.click()
+        # 로그인 팝업 나올 경우 처리
+        try:
+            alert = wait.until(EC.alert_is_present())
+            if "로그인" in alert.text:
+                alert.accept()
+                print("로그인 필요 → 로그인 진행")
+                perform_login(driver, wait, username, password)
+                driver.get(reservation_url)
+                break
+        except:
+            pass
+        # 테이블 로딩 대기
+        wait.until(EC.presence_of_element_located((By.XPATH, "//table/tbody/tr[td[@class='gray']]")))
+        # 실제 예약 로직 호출
+        success, time_slot = reserve_for_two_members(driver, wait)
+        if success:
+            return True, time_slot
+        # 실패 시 다시 예약 페이지로 복귀
+        driver.get(reservation_url)
+        wait.until(EC.presence_of_all_elements_located((By.XPATH, "//td[@class='on']")))
+    return False, None
+
+def monitor_loop(driver, wait, reservation_url, user_dates, monitor_interval, username, password):
+    """
+    메인 모니터링 루프: 로그인 세션 체크, 터미널 클리어,
+    예약 가능한 날짜 조회 및 예약 시도
+    """
+    last_login_check = datetime.now()
+    attempt_count = 0
+    start_time = datetime.now()
+    while True:
+        attempt_count += 1
+        last_login_check = check_and_relogin(
+            driver, wait, last_login_check, reservation_url, username, password
+        )
+        clear_terminal_if_needed(attempt_count, start_time, user_dates, monitor_interval)
+        available_dates = find_available_dates(driver)
+        if not available_dates:
+            print("예약 가능한 날짜 없음 → 새로고침 후 재시도")
+            time.sleep(monitor_interval)
+            driver.refresh()
+            continue
+        success, slot = try_reserve_for_dates(
+            driver, wait, available_dates, user_dates, reservation_url, username, password
+        )
+        if success:
+            return True, slot
+        time.sleep(monitor_interval)
+
+# ── edit: 지정 범위 내 '공티예약접수' 버튼 클릭 함수 추가 ──
+def reserve_in_range(driver, wait, start_date, end_date, start_time, end_time):
+    """
+    '공티 일자 및 시간' 테이블에서 날짜와 시간이 지정된 범위에 있으면
+    해당 행의 '공티예약접수' 버튼을 클릭합니다.
+
+    Parameters:
+      start_date, end_date  : 'YYYYMMDD' 형식 문자열
+      start_time, end_time  : 'HH:MM' 형식 문자열
+    Returns:
+      (True, date_str, time_str, url) 클릭 성공 시
+      (False, None, None, None)    클릭 실패 또는 범위 내 슬롯 없을 때
+    """
+    try:
+        rows = driver.find_elements(
+            By.CSS_SELECTOR,
+            "div.float_left.W100 table.tbl_st1 tbody tr"
+        )
+        for row in rows:
+            # 헤더 행이면 건너뛰기
+            if row.find_elements(By.TAG_NAME, "th"):
+                continue
+            cells = row.find_elements(By.TAG_NAME, "td")
+            if len(cells) < 4:
+                continue
+
+            # 날짜/시간 텍스트 파싱 (예: '2025.05.04 (일)  05:43')
+            dt_text   = cells[0].text.strip()
+            date_m    = re.search(r'(\d{4})\.(\d{2})\.(\d{2})', dt_text)
+            time_m    = re.search(r'(\d{2}:\d{2})', dt_text)
+            if not date_m or not time_m:
+                continue
+
+            date_str = date_m.group(1) + date_m.group(2) + date_m.group(3)
+            time_str = time_m.group(1)
+
+            # 지정한 범위 내에 있으면 버튼 클릭
+            if start_date <= date_str <= end_date and start_time <= time_str <= end_time:
+                btn = cells[3].find_element(By.TAG_NAME, "button")
+                btn.click()
+                print(f"{date_str} {time_str} → 공티예약접수 버튼 클릭 완료")
+                # 클릭 후 reserveForm.do 페이지로 이동 대기
+                wait.until(lambda d: "reserveForm.do" in d.current_url)
+                new_url = driver.current_url
+                print(f"이동된 URL: {new_url}")
+                return True, date_str, time_str, new_url
+
+        print("지정된 범위 내 예약 가능한 슬롯이 없습니다.")
     except Exception as e:
-        print(f"예약 프로세스 중 오류 발생: {e}")
-    
+        print(f"reserve_in_range 실행 중 오류 발생: {e}")
+    return False, None, None, None
+
+def click_reserve_save_and_cancel(driver, wait):
+    """
+    '공티접수' 버튼 클릭 후
+    1) '현재 내용으로 신청하시겠습니까?' 팝업이 뜨면 '예'를 누르고,
+    2) '신청접수 되었습니다.' 팝업이 뜨면 '확인'을 누릅니다.
+    """
+    try:
+        # 1) '공티접수' 버튼 클릭
+        save_btn = wait.until(EC.element_to_be_clickable(
+            (By.CSS_SELECTOR, "button.btn_blue_big[onclick*='fn_reserveSave']")
+        ))
+        save_btn.click()
+        print("공티접수 버튼 클릭")
+
+        # 2) 첫 번째 팝업 대기 및 '예' 선택
+        alert = wait.until(EC.alert_is_present())
+        print(f"첫 번째 팝업 메시지: {alert.text}")
+        alert.accept()
+        print("첫 번째 팝업에서 '예' 선택 완료")
+
+        # 3) 두 번째 팝업 대기 및 '확인' 선택
+        second_alert = wait.until(EC.alert_is_present())
+        print(f"두 번째 팝업 메시지: {second_alert.text}")
+        second_alert.accept()
+        print("두 번째 팝업에서 '확인' 선택 완료")
+
+    except Exception as e:
+        print(f"공티접수 및 팝업 처리 중 오류 발생: {e}")
+
+def main():
+    # 로그인 정보
+    username = GOLF_USERNAME
+    password = GOLF_PASSWORD
+    if not username or not password:
+        print("오류: 로그인 정보가 설정되지 않았습니다.")
+        return
+
+    reservation_url = (
+        "https://www.armywelfaregolf.mil.kr/"
+        "reserve/reserveEmptyTee.do?entofcCd=12&golfCrsCd=1"
+    )
+    driver, wait = setup_driver()
+
+    # 터미널 클리어 주기
+    clear_interval = 10
+    attempt_count = 0
+
+    try:
+        while True:
+            attempt_count += 1
+
+            if attempt_count % clear_interval == 0:
+                os.system('cls' if os.name == 'nt' else 'clear')
+
+            navigate_to_reservation(driver, reservation_url)
+            ensure_logged_in(driver, wait, reservation_url, username, password)
+
+            # 변경: 2025-05-12 ~ 2025-05-16, 시간 08:00에 시도
+            success, date_str, time_str, new_url = reserve_in_range(
+                driver, wait,
+                "20250512", "20250516",
+                "08:00", "08:00"
+            )
+
+            if success:
+                print(f"[{attempt_count}] {date_str} {time_str} 슬롯 클릭 성공 → 팝업 처리")
+                click_reserve_save_and_cancel(driver, wait)
+                print("예약 완료, 프로그램 종료")
+                break
+
+            print(f"[{attempt_count}] 예약 실패, 10초 후 재시도합니다...")
+            time.sleep(10)
+
     finally:
-        # 종료 전 잠시 대기
-        time.sleep(3)
         driver.quit()
-        
-        if monitoring:
-            print("모든 시도가 완료되었지만 예약에 성공하지 못했습니다.")
-        else:
-            print("예약 성공! 프로그램을 종료합니다.")
 
 if __name__ == "__main__":
-    import argparse
-    
-    parser = argparse.ArgumentParser(description='골프장 예약 자동화 스크립트')
-    parser.add_argument('--visible', action='store_true', help='브라우저를 화면에 표시합니다(헤드리스 모드 비활성화)')
-    
-    args = parser.parse_args()
-    
-    # args.visible이 True이면 headless=False로 설정하여 브라우저가 화면에 표시됨
-    main(headless=not args.visible)
+    main()

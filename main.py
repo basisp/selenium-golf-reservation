@@ -471,10 +471,11 @@ def main():
                     click_reserve_save_and_cancel(driver, wait)
                     return  # 성공 시 루프 탈출
 
-            print(f"[{attempt_count}] 모든 코스 검사 완료, 10초 대기 후 재시도")
-            time.sleep(5)
+            print(f"[{attempt_count}] 모든 코스 검사 완료, 1초 대기 후 재시도")
+            time.sleep(1)
 
     finally:
+        print("예약 완료, 프로그램 종료")
         driver.quit()
 
 if __name__ == "__main__":

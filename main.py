@@ -241,9 +241,8 @@ def main():
     # 사용자가 직접 지정한 예약 시도 날짜들 (형식: YYYYMMDD)
     # 여기에 원하는 날짜를 추가하거나 제거할 수 있습니다
     user_dates = [
-        "20250508",  # 2025년 4월 16일
-        "20250509",
-        "20250510",  # 2025년 4월 18일
+        "20250507",  # 2025년 4월 16일
+        "20250509",  # 2025년 4월 18일
         # 필요한 만큼 날짜 추가 가능
     ]
     
@@ -348,23 +347,20 @@ def main():
             try:
                 # 3. 사용자 지정 날짜 목록 중 예약 가능한 날짜 확인 및 순환 시도
                 raw_dates = driver.find_elements(By.XPATH, "//td[@class='on' and contains(@onclick, 'transDate_join')]")
-                available_user_dates = []
-                for elem in raw_dates:
-                    onclick_attr = elem.get_attribute("onclick")
-                    match = re.search(r"'(\d{8})'", onclick_attr)
-                    if match and match.group(1) in user_dates:
-                        available_user_dates.append((match.group(1), elem))
+                available_user_dates = [match.group(1) for elem in raw_dates if (match := re.search(r"'(\d{8})'", elem.get_attribute("onclick"))) and match.group(1) in user_dates]
                 if not available_user_dates:
                     print(f"예약 가능한 지정 날짜가 없습니다. {monitor_interval}초 후 재시도합니다.")
                     time.sleep(monitor_interval)
                     driver.refresh()
                     time.sleep(3)
                     continue
-                print(f"예약 가능한 날짜: {[d for d, _ in available_user_dates]}")
+                print(f"예약 가능한 날짜: {available_user_dates}")
                 # 각 날짜 순회하며 예약 시도
-                for current_date, date_elem in available_user_dates:
+                for current_date in available_user_dates:
                     print(f"\n{current_date} 날짜 예약 시도 중...")
-                    date_elem.click()
+                    # 클릭 직전에 요소를 새로 찾기
+                    xpath = f"//td[@class='on' and contains(@onclick, \"{current_date}\")]"
+                    driver.find_element(By.XPATH, xpath).click()
                     # 로그인 팝업 처리
                     try:
                         alert = wait.until(EC.alert_is_present(), timeout=5)

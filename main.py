@@ -231,7 +231,7 @@ def navigate_to_reservation(driver, url):
     예약 페이지로 이동 후 짧게 대기
     """
     driver.get(url)
-    time.sleep(2)
+    time.sleep(1)
 
 def ensure_logged_in(driver, wait, reservation_url, username, password):
     """
@@ -350,17 +350,17 @@ def monitor_loop(driver, wait, reservation_url, user_dates, monitor_interval, us
         time.sleep(monitor_interval)
 
 # ── edit: 지정 범위 내 '공티예약접수' 버튼 클릭 함수 추가 ──
-def reserve_in_range(driver, wait, start_date, end_date, start_time, end_time):
+def reserve_in_range(driver, wait, date_list, start_time, end_time):
     """
-    '공티 일자 및 시간' 테이블에서 날짜와 시간이 지정된 범위에 있으면
+    '공티 일자 및 시간' 테이블에서 날짜 목록과 시간이 지정된 범위에 있으면
     해당 행의 '공티예약접수' 버튼을 클릭합니다.
 
     Parameters:
-      start_date, end_date  : 'YYYYMMDD' 형식 문자열
-      start_time, end_time  : 'HH:MM' 형식 문자열
+      date_list            : 예약할 날짜 리스트 (['YYYYMMDD', ...])
+      start_time, end_time : 'HH:MM' 형식 문자열
     Returns:
       (True, date_str, time_str, url) 클릭 성공 시
-      (False, None, None, None)    클릭 실패 또는 범위 내 슬롯 없을 때
+      (False, None, None, None)    클릭 실패 또는 리스트 내 슬롯 없을 때
     """
     try:
         rows = driver.find_elements(
@@ -385,8 +385,8 @@ def reserve_in_range(driver, wait, start_date, end_date, start_time, end_time):
             date_str = date_m.group(1) + date_m.group(2) + date_m.group(3)
             time_str = time_m.group(1)
 
-            # 지정한 범위 내에 있으면 버튼 클릭
-            if start_date <= date_str <= end_date and start_time <= time_str <= end_time:
+            # 지정한 날짜 리스트 및 시간 범위 내에 있으면 버튼 클릭
+            if date_str in date_list and start_time <= time_str <= end_time:
                 btn = cells[3].find_element(By.TAG_NAME, "button")
                 btn.click()
                 print(f"{date_str} {time_str} → 공티예약접수 버튼 클릭 완료")
@@ -396,7 +396,7 @@ def reserve_in_range(driver, wait, start_date, end_date, start_time, end_time):
                 print(f"이동된 URL: {new_url}")
                 return True, date_str, time_str, new_url
 
-        print("지정된 범위 내 예약 가능한 슬롯이 없습니다.")
+        print("지정된 날짜 리스트 내 예약 가능한 슬롯이 없습니다.")
     except Exception as e:
         print(f"reserve_in_range 실행 중 오류 발생: {e}")
     return False, None, None, None
@@ -431,6 +431,8 @@ def click_reserve_save_and_cancel(driver, wait):
         print(f"공티접수 및 팝업 처리 중 오류 발생: {e}")
 
 def main():
+    # 예약할 날짜 목록 (YYYYMMDD 형식)
+    user_date_list = ["20250512", "20250513", "20250515", "20250516"]  # 원하는 날짜를 여기에 추가하세요
     # 로그인 정보
     username = GOLF_USERNAME
     password = GOLF_PASSWORD
@@ -443,6 +445,7 @@ def main():
         "reserve/reserveEmptyTee.do?entofcCd=12&golfCrsCd=1",  # 사자대
         "https://www.armywelfaregolf.mil.kr/"
         "reserve/reserveEmptyTee.do?entofcCd=11&golfCrsCd=1",  # 다른 코스
+        
     ]
     driver, wait = setup_driver()
 
@@ -462,7 +465,7 @@ def main():
                 ensure_logged_in(driver, wait, url, username, password)
                 success, date_str, time_str, _ = reserve_in_range(
                     driver, wait,
-                    "20250512", "20250516",
+                    user_date_list,
                     "07:30", "11:00"
                 )
 
